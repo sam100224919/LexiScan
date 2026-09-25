@@ -107,6 +107,402 @@ public class InterpreterTest {
     }
 
     @Test
+    void testBooleanTrueLiteral() {
+
+        String source = "true;";
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        ExprStmt exprStmt = (ExprStmt) statements.get(0);
+
+        Object result = interpreter.interpret(
+                exprStmt.getExpression()
+        );
+
+        assertEquals(true, result);
+    }
+
+    @Test
+    void testBooleanFalseLiteral() {
+
+        String source = "false;";
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        ExprStmt exprStmt = (ExprStmt) statements.get(0);
+
+        Object result = interpreter.interpret(
+                exprStmt.getExpression()
+        );
+
+        assertEquals(false, result);
+    }
+
+    @Test
+    void testNullLiteral() {
+
+        String source = "null;";
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        ExprStmt exprStmt = (ExprStmt) statements.get(0);
+
+        Object result = interpreter.interpret(
+                exprStmt.getExpression()
+        );
+
+        assertEquals(null, result);
+    }
+
+    @Test
+    void testTrueEqualTrue() {
+
+        String source = "true == true;";
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        ExprStmt exprStmt = (ExprStmt) statements.get(0);
+
+        Object result = interpreter.interpret(
+                exprStmt.getExpression()
+        );
+
+        assertEquals(true, result);
+    }
+
+    @Test
+    void testTrueEqualFalse() {
+
+        String source = "true == false;";
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        ExprStmt exprStmt = (ExprStmt) statements.get(0);
+
+        Object result = interpreter.interpret(
+                exprStmt.getExpression()
+        );
+
+        assertEquals(false, result);
+    }
+
+    @Test
+    void testTrueBangEqualFalse() {
+
+        String source = "true != false;";
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        ExprStmt exprStmt = (ExprStmt) statements.get(0);
+
+        Object result = interpreter.interpret(
+                exprStmt.getExpression()
+        );
+
+        assertEquals(true, result);
+    }
+
+    @Test
+    void testNullEqualNull() {
+
+        String source = "null == null;";
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        ExprStmt exprStmt = (ExprStmt) statements.get(0);
+
+        Object result = interpreter.interpret(
+                exprStmt.getExpression()
+        );
+
+        assertEquals(true, result);
+    }
+
+    @Test
+    void testNullBangEqualNull() {
+
+        String source = "null != null;";
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        ExprStmt exprStmt = (ExprStmt) statements.get(0);
+
+        Object result = interpreter.interpret(
+                exprStmt.getExpression()
+        );
+
+        assertEquals(false, result);
+    }
+
+    @Test
+    void testNullEqualTrue() {
+
+        String source = "null == true;";
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        ExprStmt exprStmt = (ExprStmt) statements.get(0);
+
+        Object result = interpreter.interpret(
+                exprStmt.getExpression()
+        );
+
+        assertEquals(false, result);
+    }
+
+    @Test
+    void testGreaterThanRequestedCase() {
+
+        String source = "10 > 5;";
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        ExprStmt exprStmt = (ExprStmt) statements.get(0);
+
+        Object result = interpreter.interpret(
+                exprStmt.getExpression()
+        );
+
+        assertEquals(true, result);
+    }
+
+    @Test
+    void testGreaterThanOrEqualRequestedCase() {
+
+        String source = "10 >= 10;";
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        ExprStmt exprStmt = (ExprStmt) statements.get(0);
+
+        Object result = interpreter.interpret(
+                exprStmt.getExpression()
+        );
+
+        assertEquals(true, result);
+    }
+
+    @Test
+    void testLessThanRequestedCase() {
+
+        String source = "5 < 10;";
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        ExprStmt exprStmt = (ExprStmt) statements.get(0);
+
+        Object result = interpreter.interpret(
+                exprStmt.getExpression()
+        );
+
+        assertEquals(true, result);
+    }
+
+    @Test
+    void testLessThanOrEqualRequestedCase() {
+
+        String source = "5 <= 5;";
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        ExprStmt exprStmt = (ExprStmt) statements.get(0);
+
+        Object result = interpreter.interpret(
+                exprStmt.getExpression()
+        );
+
+        assertEquals(true, result);
+    }
+
+    @Test
+    void testEqualEqualRequestedCase() {
+
+        String source = "10 == 10;";
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        ExprStmt exprStmt = (ExprStmt) statements.get(0);
+
+        Object result = interpreter.interpret(
+                exprStmt.getExpression()
+        );
+
+        assertEquals(true, result);
+    }
+
+    @Test
+    void testBangEqualRequestedCase() {
+
+        String source = "10 != 5;";
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        ExprStmt exprStmt = (ExprStmt) statements.get(0);
+
+        Object result = interpreter.interpret(
+                exprStmt.getExpression()
+        );
+
+        assertEquals(true, result);
+    }
+
+    @Test
+    void testComparisonPrecedenceWithAddition() {
+
+        String source = "2 + 3 > 4;";
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        ExprStmt exprStmt = (ExprStmt) statements.get(0);
+
+        Object result = interpreter.interpret(
+                exprStmt.getExpression()
+        );
+
+        assertEquals(true, result);
+    }
+
+    @Test
+    void testEqualityPrecedenceWithMultiplication() {
+
+        String source = "2 * 3 == 6;";
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        ExprStmt exprStmt = (ExprStmt) statements.get(0);
+
+        Object result = interpreter.interpret(
+                exprStmt.getExpression()
+        );
+
+        assertEquals(true, result);
+    }
+
+    @Test
+    void testEqualityWithParenthesizedAddition() {
+
+        String source = "(2 + 3) == 5;";
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        ExprStmt exprStmt = (ExprStmt) statements.get(0);
+
+        Object result = interpreter.interpret(
+                exprStmt.getExpression()
+        );
+
+        assertEquals(true, result);
+    }
+
+    @Test
     void testGreaterThan() {
 
         String source = "10 > 5;";

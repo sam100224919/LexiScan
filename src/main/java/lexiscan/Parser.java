@@ -500,6 +500,10 @@ public class Parser {
             return new LiteralExpr(false);
         }
 
+        if (match(TokenType.NULL)) {
+            return new LiteralExpr(null);
+        }
+
         if (match(TokenType.NUMBER)) {
 
             return new LiteralExpr(
