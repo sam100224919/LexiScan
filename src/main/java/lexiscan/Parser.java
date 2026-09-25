@@ -330,7 +330,9 @@ public class Parser {
 
         while (match(
                 TokenType.GREATER,
-                TokenType.LESS
+                TokenType.GREATER_EQUAL,
+                TokenType.LESS,
+                TokenType.LESS_EQUAL
         )) {
 
             Token operator = previous();
