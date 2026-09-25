@@ -8,6 +8,8 @@ public enum TokenType {
     IF,
     ELSE,
     WHILE,
+    AND,
+    OR,
     TRUE,
     FALSE,
     NULL,

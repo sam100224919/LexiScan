@@ -1,12 +1,16 @@
 package lexiscan;
 
 import lexiscan.ast.BinaryExpr;
+import lexiscan.ast.BlockStmt;
 import lexiscan.ast.Expr;
 import lexiscan.ast.ExprStmt;
+import lexiscan.ast.IfStmt;
 import lexiscan.ast.LiteralExpr;
-import lexiscan.ast.VariableExpr;
 import lexiscan.ast.Stmt;
+import lexiscan.ast.UnaryExpr;
 import lexiscan.ast.VarStmt;
+import lexiscan.ast.VariableExpr;
+import lexiscan.ast.WhileStmt;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,11 +24,12 @@ public class Parser {
         this.tokens = tokens;
     }
 
-    // Entry point
     public List<Stmt> parse() {
+
         List<Stmt> statements = new ArrayList<>();
 
         while (!isAtEnd()) {
+
             if (match(TokenType.SEMICOLON)) {
                 continue;
             }
@@ -35,10 +40,20 @@ public class Parser {
         return statements;
     }
 
-    // statement -> variableDeclaration | expressionStatement
     private Stmt statement() {
 
-        // let name = expression;
+        if (match(TokenType.WHILE)) {
+            return whileStatement();
+        }
+
+        if (match(TokenType.IF)) {
+            return ifStatement();
+        }
+
+        if (match(TokenType.LEFT_BRACE)) {
+            return block();
+        }
+
         if (match(TokenType.LET)) {
             return variableDeclaration();
         }
@@ -46,7 +61,73 @@ public class Parser {
         return expressionStatement();
     }
 
-    // let name = expression ;
+    private Stmt whileStatement() {
+
+        consume(
+                TokenType.LEFT_PAREN,
+                "Expected '(' after 'while'."
+        );
+
+        Expr condition = expression();
+
+        consume(
+                TokenType.RIGHT_PAREN,
+                "Expected ')' after while condition."
+        );
+
+        Stmt body = statement();
+
+        return new WhileStmt(
+                condition,
+                body
+        );
+    }
+
+    private Stmt ifStatement() {
+
+        consume(
+                TokenType.LEFT_PAREN,
+                "Expected '(' after 'if'."
+        );
+
+        Expr condition = expression();
+
+        consume(
+                TokenType.RIGHT_PAREN,
+                "Expected ')' after if condition."
+        );
+
+        Stmt thenBranch = statement();
+
+        Stmt elseBranch = null;
+
+        if (match(TokenType.ELSE)) {
+            elseBranch = statement();
+        }
+
+        return new IfStmt(
+                condition,
+                thenBranch,
+                elseBranch
+        );
+    }
+
+    private Stmt block() {
+
+        List<Stmt> statements = new ArrayList<>();
+
+        while (!check(TokenType.RIGHT_BRACE) && !isAtEnd()) {
+            statements.add(statement());
+        }
+
+        consume(
+                TokenType.RIGHT_BRACE,
+                "Expected '}' after block."
+        );
+
+        return new BlockStmt(statements);
+    }
+
     private Stmt variableDeclaration() {
 
         Token name = consume(
@@ -69,7 +150,6 @@ public class Parser {
         return new VarStmt(name, initializer);
     }
 
-    // expression ;
     private Stmt expressionStatement() {
 
         Expr expr = expression();
@@ -82,17 +162,125 @@ public class Parser {
         return new ExprStmt(expr);
     }
 
-    // expression
+    // --------------------------------------------------
+    // EXPRESSIONS
+    // --------------------------------------------------
+
     private Expr expression() {
-        return addition();
+        return or();
     }
 
-    // addition -> multiplication (("+" | "-") multiplication)*
+    private Expr or() {
+
+        Expr expr = and();
+
+        while (match(TokenType.OR)) {
+
+            Token operator = previous();
+
+            Expr right = and();
+
+            expr = new BinaryExpr(
+                    expr,
+                    operator,
+                    right
+            );
+        }
+
+        return expr;
+    }
+
+    private Expr and() {
+
+        Expr expr = equality();
+
+        while (match(TokenType.AND)) {
+
+            Token operator = previous();
+
+            Expr right = equality();
+
+            expr = new BinaryExpr(
+                    expr,
+                    operator,
+                    right
+            );
+        }
+
+        return expr;
+    }
+
+    /*
+     * Equality has lower precedence than comparison.
+     */
+    private Expr equality() {
+
+        Expr expr = comparison();
+
+        while (match(
+                TokenType.EQUAL_EQUAL,
+                TokenType.BANG_EQUAL
+        )) {
+
+            Token operator = previous();
+
+            Expr right = comparison();
+
+            expr = new BinaryExpr(
+                    expr,
+                    operator,
+                    right
+            );
+        }
+
+        return expr;
+    }
+
+    /*
+     * Comparison has lower precedence than addition.
+     */
+    private Expr comparison() {
+
+        Expr expr = addition();
+
+        while (match(
+                TokenType.GREATER,
+                TokenType.LESS
+        )) {
+
+            Token operator = previous();
+
+            Expr right = addition();
+
+            expr = new BinaryExpr(
+                    expr,
+                    operator,
+                    right
+            );
+        }
+
+        return expr;
+    }
+
+    /*
+     * Addition has lower precedence than multiplication.
+     *
+     * Example:
+     *
+     * 2 + 3 * 4
+     *
+     * becomes:
+     *
+     * 2 + (3 * 4)
+     */
     private Expr addition() {
 
         Expr expr = multiplication();
 
-        while (match(TokenType.PLUS, TokenType.MINUS)) {
+        while (match(
+                TokenType.PLUS,
+                TokenType.MINUS
+        )) {
 
             Token operator = previous();
 
@@ -108,16 +296,21 @@ public class Parser {
         return expr;
     }
 
-    // multiplication -> primary (("*" | "/") primary)*
+    /*
+     * Multiplication has higher precedence than addition.
+     */
     private Expr multiplication() {
 
-        Expr expr = primary();
+        Expr expr = unary();
 
-        while (match(TokenType.STAR, TokenType.SLASH)) {
+        while (match(
+                TokenType.STAR,
+                TokenType.SLASH
+        )) {
 
             Token operator = previous();
 
-            Expr right = primary();
+            Expr right = unary();
 
             expr = new BinaryExpr(
                     expr,
@@ -129,20 +322,73 @@ public class Parser {
         return expr;
     }
 
-    // primary -> NUMBER | IDENTIFIER | "(" expression ")"
+    /*
+     * Unary operators.
+     *
+     * Examples:
+     *
+     * -5
+     * -10
+     * -(5 + 3)
+     */
+    private Expr unary() {
+
+        if (match(TokenType.BANG)) {
+
+            Token operator = previous();
+
+            Expr right = unary();
+
+            return new UnaryExpr(
+                    operator,
+                    right
+            );
+        }
+
+        if (match(TokenType.MINUS)) {
+
+            Token operator = previous();
+
+            Expr right = unary();
+
+            return new BinaryExpr(
+                    new LiteralExpr(0.0),
+                    operator,
+                    right
+            );
+        }
+
+        return primary();
+    }
+
+    /*
+     * Primary expressions are the highest-precedence
+     * expressions.
+     */
     private Expr primary() {
 
-        // Number
+        if (match(TokenType.TRUE)) {
+            return new LiteralExpr(true);
+        }
+
+        if (match(TokenType.FALSE)) {
+            return new LiteralExpr(false);
+        }
+
         if (match(TokenType.NUMBER)) {
-            return new LiteralExpr(previous().literal());
+
+            return new LiteralExpr(
+                    previous().literal()
+            );
         }
 
-        // Variable
         if (match(TokenType.IDENTIFIER)) {
-            return new VariableExpr(previous());
+
+            return new VariableExpr(
+                    previous()
+            );
         }
 
-        // Parentheses
         if (match(TokenType.LEFT_PAREN)) {
 
             Expr expr = expression();
@@ -161,16 +407,18 @@ public class Parser {
         );
     }
 
-    // ------------------------------------------------------------
-    // Helper methods
-    // ------------------------------------------------------------
+    // --------------------------------------------------
+    // PARSER HELPERS
+    // --------------------------------------------------
 
     private boolean match(TokenType... types) {
 
         for (TokenType type : types) {
 
             if (check(type)) {
+
                 advance();
+
                 return true;
             }
         }
@@ -187,7 +435,10 @@ public class Parser {
             return advance();
         }
 
-        throw error(peek(), message);
+        throw error(
+                peek(),
+                message
+        );
     }
 
     private boolean check(TokenType type) {
@@ -226,9 +477,10 @@ public class Parser {
     ) {
 
         return new RuntimeException(
-                message + " Found '" +
-                        token.lexeme() +
-                        "'."
+                message
+                        + " Found '"
+                        + token.lexeme()
+                        + "'."
         );
     }
 }

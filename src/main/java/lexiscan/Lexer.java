@@ -23,6 +23,8 @@ public class Lexer {
         keywords.put("if", TokenType.IF);
         keywords.put("else", TokenType.ELSE);
         keywords.put("while", TokenType.WHILE);
+        keywords.put("and", TokenType.AND);
+        keywords.put("or", TokenType.OR);
         keywords.put("true", TokenType.TRUE);
         keywords.put("false", TokenType.FALSE);
         keywords.put("null", TokenType.NULL);
