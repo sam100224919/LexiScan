@@ -2,10 +2,13 @@ package lexiscan;
 
 import lexiscan.ast.BinaryExpr;
 import lexiscan.ast.BlockStmt;
+import lexiscan.ast.CallExpr;
 import lexiscan.ast.Expr;
 import lexiscan.ast.ExprStmt;
+import lexiscan.ast.FunctionStmt;
 import lexiscan.ast.IfStmt;
 import lexiscan.ast.LiteralExpr;
+import lexiscan.ast.ReturnStmt;
 import lexiscan.ast.Stmt;
 import lexiscan.ast.UnaryExpr;
 import lexiscan.ast.VarStmt;
@@ -34,13 +37,30 @@ public class Parser {
                 continue;
             }
 
-            statements.add(statement());
+            statements.add(declaration());
         }
 
         return statements;
     }
 
+    private Stmt declaration() {
+
+        if (match(TokenType.FUN)) {
+            return functionDeclaration();
+        }
+
+        if (match(TokenType.LET)) {
+            return variableDeclaration();
+        }
+
+        return statement();
+    }
+
     private Stmt statement() {
+
+        if (match(TokenType.RETURN)) {
+            return returnStatement();
+        }
 
         if (match(TokenType.WHILE)) {
             return whileStatement();
@@ -54,11 +74,51 @@ public class Parser {
             return block();
         }
 
-        if (match(TokenType.LET)) {
-            return variableDeclaration();
+        return expressionStatement();
+    }
+
+    private Stmt functionDeclaration() {
+
+        Token name = consume(
+                TokenType.IDENTIFIER,
+                "Expected function name."
+        );
+
+        consume(
+                TokenType.LEFT_PAREN,
+                "Expected '(' after function name."
+        );
+
+        List<Token> parameters = new ArrayList<>();
+
+        if (!check(TokenType.RIGHT_PAREN)) {
+            do {
+                parameters.add(
+                        consume(
+                                TokenType.IDENTIFIER,
+                                "Expected parameter name."
+                        )
+                );
+            } while (match(TokenType.COMMA));
         }
 
-        return expressionStatement();
+        consume(
+                TokenType.RIGHT_PAREN,
+                "Expected ')' after parameters."
+        );
+
+        consume(
+                TokenType.LEFT_BRACE,
+                "Expected '{' before function body."
+        );
+
+        List<Stmt> body = blockStatements();
+
+        return new FunctionStmt(
+                name,
+                parameters,
+                body
+        );
     }
 
     private Stmt whileStatement() {
@@ -114,10 +174,17 @@ public class Parser {
 
     private Stmt block() {
 
+        return new BlockStmt(
+                blockStatements()
+        );
+    }
+
+    private List<Stmt> blockStatements() {
+
         List<Stmt> statements = new ArrayList<>();
 
         while (!check(TokenType.RIGHT_BRACE) && !isAtEnd()) {
-            statements.add(statement());
+            statements.add(declaration());
         }
 
         consume(
@@ -125,7 +192,25 @@ public class Parser {
                 "Expected '}' after block."
         );
 
-        return new BlockStmt(statements);
+        return statements;
+    }
+
+    private Stmt returnStatement() {
+
+        Token keyword = previous();
+
+        Expr value = null;
+
+        if (!check(TokenType.SEMICOLON)) {
+            value = expression();
+        }
+
+        consume(
+                TokenType.SEMICOLON,
+                "Expected ';' after return value."
+        );
+
+        return new ReturnStmt(keyword, value);
     }
 
     private Stmt variableDeclaration() {
@@ -358,7 +443,45 @@ public class Parser {
             );
         }
 
-        return primary();
+        return call();
+    }
+
+    private Expr call() {
+
+        Expr expr = primary();
+
+        while (true) {
+
+            if (match(TokenType.LEFT_PAREN)) {
+                expr = finishCall(expr);
+            } else {
+                break;
+            }
+        }
+
+        return expr;
+    }
+
+    private Expr finishCall(Expr callee) {
+
+        List<Expr> arguments = new ArrayList<>();
+
+        if (!check(TokenType.RIGHT_PAREN)) {
+            do {
+                arguments.add(expression());
+            } while (match(TokenType.COMMA));
+        }
+
+        Token paren = consume(
+                TokenType.RIGHT_PAREN,
+                "Expected ')' after arguments."
+        );
+
+        return new CallExpr(
+                callee,
+                paren,
+                arguments
+        );
     }
 
     /*

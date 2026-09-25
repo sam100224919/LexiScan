@@ -1,5 +1,6 @@
 package lexiscan;
 
+import lexiscan.ast.BlockStmt;
 import lexiscan.ast.ExprStmt;
 import lexiscan.ast.Stmt;
 import org.junit.jupiter.api.Test;
@@ -719,5 +720,160 @@ public class InterpreterTest {
         );
 
         assertEquals(6.0, result);
+    }
+
+    @Test
+    void testFunctionDeclarationAndCall() {
+
+        String source = """
+                fun addOne(value) {
+                    return value + 1;
+                }
+                addOne(10);
+                """;
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        interpreter.execute(statements.get(0));
+
+        ExprStmt exprStmt = (ExprStmt) statements.get(1);
+
+        Object result = interpreter.interpret(
+                exprStmt.getExpression()
+        );
+
+        assertEquals(11.0, result);
+    }
+
+    @Test
+    void testFunctionWithMultipleParameters() {
+
+        String source = """
+                fun sum(a, b, c) {
+                    return a + b + c;
+                }
+                sum(2, 3, 4);
+                """;
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        interpreter.execute(statements.get(0));
+
+        ExprStmt exprStmt = (ExprStmt) statements.get(1);
+
+        Object result = interpreter.interpret(
+                exprStmt.getExpression()
+        );
+
+        assertEquals(9.0, result);
+    }
+
+    @Test
+    void testFunctionReturnExpression() {
+
+        String source = """
+                fun compute(x) {
+                    return (x * 2) + 3;
+                }
+                compute(5);
+                """;
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        interpreter.execute(statements.get(0));
+
+        ExprStmt exprStmt = (ExprStmt) statements.get(1);
+
+        Object result = interpreter.interpret(
+                exprStmt.getExpression()
+        );
+
+        assertEquals(13.0, result);
+    }
+
+    @Test
+    void testFunctionUsesDeclarationScope() {
+
+        String source = """
+                let x = 100;
+                fun readX() {
+                    return x;
+                }
+                {
+                    let x = 1;
+                    readX();
+                }
+                """;
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        interpreter.execute(statements.get(0));
+        interpreter.execute(statements.get(1));
+
+        BlockStmt blockStmt = (BlockStmt) statements.get(2);
+        ExprStmt exprStmt = (ExprStmt) blockStmt.getStatements().get(1);
+
+        Object result = interpreter.interpret(
+                exprStmt.getExpression()
+        );
+
+        assertEquals(100.0, result);
+    }
+
+    @Test
+    void testRecursiveFunctionCall() {
+
+        String source = """
+                fun factorial(n) {
+                    if (n < 2) {
+                        return 1;
+                    }
+
+                    return n * factorial(n - 1);
+                }
+                factorial(5);
+                """;
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        interpreter.execute(statements.get(0));
+
+        ExprStmt exprStmt = (ExprStmt) statements.get(1);
+
+        Object result = interpreter.interpret(
+                exprStmt.getExpression()
+        );
+
+        assertEquals(120.0, result);
     }
 }

@@ -2,21 +2,25 @@ package lexiscan;
 
 import lexiscan.ast.BinaryExpr;
 import lexiscan.ast.BlockStmt;
+import lexiscan.ast.CallExpr;
 import lexiscan.ast.Expr;
 import lexiscan.ast.ExprStmt;
+import lexiscan.ast.FunctionStmt;
 import lexiscan.ast.IfStmt;
 import lexiscan.ast.LiteralExpr;
+import lexiscan.ast.ReturnStmt;
 import lexiscan.ast.Stmt;
 import lexiscan.ast.UnaryExpr;
 import lexiscan.ast.VarStmt;
 import lexiscan.ast.VariableExpr;
 import lexiscan.ast.WhileStmt;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class Interpreter {
 
-    private final Environment environment;
+    private Environment environment;
 
     public Interpreter() {
         environment = new Environment();
@@ -59,6 +63,32 @@ public class Interpreter {
             );
 
             return value;
+        }
+
+        // Function declaration
+        if (statement instanceof FunctionStmt functionStmt) {
+            LexiFunction function = new LexiFunction(
+                    functionStmt,
+                    environment
+            );
+
+            environment.define(
+                    functionStmt.getName().lexeme(),
+                    function
+            );
+
+            return function;
+        }
+
+        // Return statement
+        if (statement instanceof ReturnStmt returnStmt) {
+            Object value = null;
+
+            if (returnStmt.getValue() != null) {
+                value = interpret(returnStmt.getValue());
+            }
+
+            throw new ReturnSignal(value);
         }
 
         // Block statement
@@ -116,6 +146,31 @@ public class Interpreter {
         return result;
     }
 
+    public Object executeBlock(
+            List<Stmt> statements,
+            Environment blockEnvironment
+    ) {
+        Environment previous = environment;
+
+        try {
+            environment = blockEnvironment;
+
+            Object result = null;
+
+            for (Stmt statement : statements) {
+                result = execute(statement);
+            }
+
+            return result;
+        } finally {
+            environment = previous;
+        }
+    }
+
+    public Environment getEnvironment() {
+        return environment;
+    }
+
     // =====================================================
     // EVALUATE EXPRESSION
     // =====================================================
@@ -138,6 +193,36 @@ public class Interpreter {
             return environment.get(
                     variable.getName()
             );
+        }
+
+        // =================================================
+        // FUNCTION CALL
+        // =================================================
+
+        if (expression instanceof CallExpr callExpr) {
+            Object callee = evaluate(callExpr.getCallee());
+
+            if (!(callee instanceof LexiCallable function)) {
+                throw new RuntimeException(
+                        "Can only call functions."
+                );
+            }
+
+            List<Object> arguments = new ArrayList<>();
+
+            for (Expr argument : callExpr.getArguments()) {
+                arguments.add(evaluate(argument));
+            }
+
+            if (arguments.size() != function.arity()) {
+                throw new RuntimeException(
+                        "Expected " + function.arity()
+                                + " arguments but got "
+                                + arguments.size() + "."
+                );
+            }
+
+            return function.call(this, arguments);
         }
 
         // =================================================
