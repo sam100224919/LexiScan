@@ -1,6 +1,7 @@
 package lexiscan;
 
 import lexiscan.ast.BinaryExpr;
+import lexiscan.ast.AssignExpr;
 import lexiscan.ast.BlockStmt;
 import lexiscan.ast.CallExpr;
 import lexiscan.ast.Expr;
@@ -252,7 +253,33 @@ public class Parser {
     // --------------------------------------------------
 
     private Expr expression() {
-        return or();
+        return assignment();
+    }
+
+    private Expr assignment() {
+
+        Expr expr = or();
+
+        if (match(TokenType.EQUAL)) {
+
+            Token equals = previous();
+
+            Expr value = assignment();
+
+            if (expr instanceof VariableExpr variable) {
+                return new AssignExpr(
+                        variable.getToken(),
+                        value
+                );
+            }
+
+            throw error(
+                    equals,
+                    "Invalid assignment target."
+            );
+        }
+
+        return expr;
     }
 
     private Expr or() {

@@ -1,6 +1,7 @@
 package lexiscan;
 
 import lexiscan.ast.BinaryExpr;
+import lexiscan.ast.AssignExpr;
 import lexiscan.ast.BlockStmt;
 import lexiscan.ast.CallExpr;
 import lexiscan.ast.Expr;
@@ -31,12 +32,7 @@ public class Interpreter {
     // =====================================================
 
     public Object interpret(Expr expression) {
-        try {
-            return evaluate(expression);
-        } catch (RuntimeException e) {
-            System.err.println("Runtime error: " + e.getMessage());
-            return null;
-        }
+        return evaluate(expression);
     }
 
     // =====================================================
@@ -93,17 +89,26 @@ public class Interpreter {
 
         // Block statement
         if (statement instanceof BlockStmt blockStmt) {
-            return execute(blockStmt.getStatements());
+            return executeBlock(
+                    blockStmt.getStatements(),
+                    new Environment(environment)
+            );
         }
 
         // If statement
         if (statement instanceof IfStmt ifStmt) {
 
-            Object condition = interpret(
+            Object condition = evaluate(
                     ifStmt.getCondition()
             );
 
-            if (isTruthy(condition)) {
+            if (!(condition instanceof Boolean booleanCondition)) {
+                throw new RuntimeException(
+                        "If condition must be boolean."
+                );
+            }
+
+            if (booleanCondition) {
                 return execute(ifStmt.getThenBranch());
             }
 
@@ -183,6 +188,24 @@ public class Interpreter {
 
         if (expression instanceof LiteralExpr literal) {
             return literal.getValue();
+        }
+
+        // =================================================
+        // ASSIGNMENT
+        // =================================================
+
+        if (expression instanceof AssignExpr assign) {
+
+            Object value = evaluate(
+                    assign.getValue()
+            );
+
+            environment.assign(
+                    assign.getName().getLexeme(),
+                    value
+            );
+
+            return value;
         }
 
         // =================================================

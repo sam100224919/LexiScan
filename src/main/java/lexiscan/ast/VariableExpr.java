@@ -10,6 +10,11 @@ public class VariableExpr extends Expr {
         this.name = name;
     }
 
-    public String getName() { return name.getLexeme(); }
-// or return name.getText(); / return name.lexeme; depending on your Token class
+    public String getName() {
+        return name.getLexeme();
+    }
+
+    public Token getToken() {
+        return name;
+    }
 }

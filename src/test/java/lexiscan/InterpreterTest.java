@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class InterpreterTest {
 
@@ -38,6 +39,140 @@ public class InterpreterTest {
         );
 
         assertEquals(15.0, result);
+    }
+
+    @Test
+    void testVariableReassignment() {
+
+        String source = """
+                let x = 10;
+                x = 20;
+                x;
+                """;
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        interpreter.execute(statements.get(0));
+        interpreter.execute(statements.get(1));
+
+        ExprStmt exprStmt = (ExprStmt) statements.get(2);
+
+        Object result = interpreter.interpret(
+                exprStmt.getExpression()
+        );
+
+        assertEquals(20.0, result);
+    }
+
+    @Test
+    void testVariableReassignmentWithExpression() {
+
+        String source = """
+                let x = 10;
+                x = x + 5;
+                x;
+                """;
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        interpreter.execute(statements.get(0));
+        interpreter.execute(statements.get(1));
+
+        ExprStmt exprStmt = (ExprStmt) statements.get(2);
+
+        Object result = interpreter.interpret(
+                exprStmt.getExpression()
+        );
+
+        assertEquals(15.0, result);
+    }
+
+    @Test
+    void testMultipleVariableReassignments() {
+
+        String source = """
+                let x = 1;
+                x = 2;
+                x = 3;
+                x;
+                """;
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        interpreter.execute(statements.get(0));
+        interpreter.execute(statements.get(1));
+        interpreter.execute(statements.get(2));
+
+        ExprStmt exprStmt = (ExprStmt) statements.get(3);
+
+        Object result = interpreter.interpret(
+                exprStmt.getExpression()
+        );
+
+        assertEquals(3.0, result);
+    }
+
+    @Test
+    void testAssignmentWithComparisonAndArithmetic() {
+
+        String source = """
+                let x = 5;
+                x = x * 2 > 9;
+                x;
+                """;
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        interpreter.execute(statements.get(0));
+        interpreter.execute(statements.get(1));
+
+        ExprStmt exprStmt = (ExprStmt) statements.get(2);
+
+        Object result = interpreter.interpret(
+                exprStmt.getExpression()
+        );
+
+        assertEquals(true, result);
+    }
+
+    @Test
+    void testAssignUndefinedVariableThrowsRuntimeError() {
+
+        Interpreter interpreter = new Interpreter();
+
+        RuntimeException exception = assertThrows(
+                RuntimeException.class,
+                () -> interpreter.getEnvironment().assign(
+                        "x",
+                        10.0
+                )
+        );
+
+        assertEquals("Undefined variable 'x'.", exception.getMessage());
     }
 
     @Test
@@ -883,7 +1018,7 @@ public class InterpreterTest {
                 exprStmt.getExpression()
         );
 
-        assertEquals(42.0, result);
+        assertEquals(0.0, result);
     }
 
     @Test
@@ -949,7 +1084,7 @@ public class InterpreterTest {
                 exprStmt.getExpression()
         );
 
-        assertEquals(20.0, result);
+        assertEquals(1.0, result);
     }
 
     @Test
@@ -985,7 +1120,7 @@ public class InterpreterTest {
                 exprStmt.getExpression()
         );
 
-        assertEquals(5.0, result);
+        assertEquals(0.0, result);
     }
 
     @Test
@@ -1019,7 +1154,7 @@ public class InterpreterTest {
                 exprStmt.getExpression()
         );
 
-        assertEquals(2.0, result);
+        assertEquals(1.0, result);
     }
 
     @Test
@@ -1053,7 +1188,293 @@ public class InterpreterTest {
                 exprStmt.getExpression()
         );
 
-        assertEquals(9.0, result);
+        assertEquals(0.0, result);
+
+    }
+
+    @Test
+    void testIfStatementBasicReassignment() {
+
+        String source = """
+                let x = 10;
+                if (x > 5) {
+                    x = 20;
+                }
+                x;
+                """;
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        for (int i = 0; i < statements.size() - 1; i++) {
+            interpreter.execute(statements.get(i));
+        }
+
+        ExprStmt exprStmt = (ExprStmt) statements.get(statements.size() - 1);
+
+        Object result = interpreter.interpret(
+                exprStmt.getExpression()
+        );
+
+        assertEquals(20.0, result);
+    }
+
+    @Test
+    void testIfStatementElseBranchReassignment() {
+
+        String source = """
+                let x = 3;
+                if (x > 5) {
+                    x = 20;
+                } else {
+                    x = 30;
+                }
+                x;
+                """;
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        for (int i = 0; i < statements.size() - 1; i++) {
+            interpreter.execute(statements.get(i));
+        }
+
+        ExprStmt exprStmt = (ExprStmt) statements.get(statements.size() - 1);
+
+        Object result = interpreter.interpret(
+                exprStmt.getExpression()
+        );
+
+        assertEquals(30.0, result);
+    }
+
+    @Test
+    void testIfStatementFalseWithoutElse() {
+
+        String source = """
+                let x = 10;
+                if (x < 5) {
+                    x = 20;
+                }
+                x;
+                """;
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        for (int i = 0; i < statements.size() - 1; i++) {
+            interpreter.execute(statements.get(i));
+        }
+
+        ExprStmt exprStmt = (ExprStmt) statements.get(statements.size() - 1);
+
+        Object result = interpreter.interpret(
+                exprStmt.getExpression()
+        );
+
+        assertEquals(10.0, result);
+    }
+
+    @Test
+    void testBlockScopeShadowsOuterVariable() {
+
+        String source = """
+                let x = 10;
+                {
+                    let x = 20;
+                }
+                x;
+                """;
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        for (int i = 0; i < statements.size() - 1; i++) {
+            interpreter.execute(statements.get(i));
+        }
+
+        ExprStmt exprStmt = (ExprStmt) statements.get(statements.size() - 1);
+
+        Object result = interpreter.interpret(
+                exprStmt.getExpression()
+        );
+
+        assertEquals(10.0, result);
+    }
+
+    @Test
+    void testNestedBlocksPreserveOuterVariable() {
+
+        String source = """
+                let x = 10;
+                {
+                    let y = 20;
+                    {
+                        let z = 30;
+                    }
+                }
+                x;
+                """;
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        for (int i = 0; i < statements.size() - 1; i++) {
+            interpreter.execute(statements.get(i));
+        }
+
+        ExprStmt exprStmt = (ExprStmt) statements.get(statements.size() - 1);
+
+        Object result = interpreter.interpret(
+                exprStmt.getExpression()
+        );
+
+        assertEquals(10.0, result);
+    }
+
+    @Test
+    void testOuterVariableAccessAndAssignmentFromBlock() {
+
+        String source = """
+                let x = 10;
+                {
+                    x = 20;
+                }
+                x;
+                """;
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        for (int i = 0; i < statements.size() - 1; i++) {
+            interpreter.execute(statements.get(i));
+        }
+
+        ExprStmt exprStmt = (ExprStmt) statements.get(statements.size() - 1);
+
+        Object result = interpreter.interpret(
+                exprStmt.getExpression()
+        );
+
+        assertEquals(20.0, result);
+    }
+
+    @Test
+    void testUndefinedVariableInsideBlockThrowsRuntimeError() {
+
+        String source = """
+                {
+                    y;
+                }
+                """;
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        RuntimeException exception = assertThrows(
+                RuntimeException.class,
+                () -> interpreter.execute(statements.get(0))
+        );
+
+        assertEquals("Undefined variable 'y'.", exception.getMessage());
+    }
+
+    @Test
+    void testIfConditionMustBeBoolean() {
+
+        String source = """
+                if (123) {
+                    let x = 1;
+                }
+                """;
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        RuntimeException exception = assertThrows(
+                RuntimeException.class,
+                () -> interpreter.execute(statements.get(0))
+        );
+
+        assertEquals("If condition must be boolean.", exception.getMessage());
+    }
+
+    @Test
+    void testNestedIfElseControlFlow() {
+
+        String source = """
+                let x = 0;
+                if (true) {
+                    if (false) {
+                        x = 1;
+                    } else {
+                        x = 2;
+                    }
+                } else {
+                    x = 3;
+                }
+                x;
+                """;
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        for (int i = 0; i < statements.size() - 1; i++) {
+            interpreter.execute(statements.get(i));
+        }
+
+        ExprStmt exprStmt = (ExprStmt) statements.get(statements.size() - 1);
+
+        Object result = interpreter.interpret(
+                exprStmt.getExpression()
+        );
+
+        assertEquals(2.0, result);
     }
 
     @Test
@@ -1062,7 +1483,7 @@ public class InterpreterTest {
         String source = """
                 let x = 0;
                 while (x < 3) {
-                    let x = x + 1;
+                    x = x + 1;
                 }
                 x;
                 """;
@@ -1126,7 +1547,7 @@ public class InterpreterTest {
         String source = """
                 let x = 1;
                 while (x < 16) {
-                    let x = x * 2;
+                    x = x * 2;
                 }
                 x;
                 """;
@@ -1158,7 +1579,7 @@ public class InterpreterTest {
         String source = """
                 let x = 2;
                 while (x != 7) {
-                    let x = x + 1;
+                    x = x + 1;
                 }
                 x;
                 """;
@@ -1190,7 +1611,7 @@ public class InterpreterTest {
         String source = """
                 let x = 0;
                 while ((x < 5) and !false) {
-                    let x = x + 2;
+                    x = x + 2;
                 }
                 x;
                 """;
@@ -1223,8 +1644,8 @@ public class InterpreterTest {
                 let x = 0;
                 let y = 0;
                 while (x < 3) {
-                    let x = x + 1;
-                    let y = y + x;
+                    x = x + 1;
+                    y = y + x;
                 }
                 y;
                 """;
