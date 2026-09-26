@@ -29,7 +29,7 @@ public class Environment {
             return enclosing.get(name);
         }
 
-        throw new RuntimeException(
+        throw new LexiRuntimeException(
                 "Undefined variable '" + name + "'."
         );
     }
@@ -45,7 +45,7 @@ public class Environment {
             return;
         }
 
-        throw new RuntimeException(
+        throw new LexiRuntimeException(
                 "Undefined variable '" + name + "'."
         );
     }

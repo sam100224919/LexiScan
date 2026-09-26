@@ -9,6 +9,7 @@ import lexiscan.ast.ExprStmt;
 import lexiscan.ast.FunctionStmt;
 import lexiscan.ast.IfStmt;
 import lexiscan.ast.LiteralExpr;
+import lexiscan.ast.PrintStmt;
 import lexiscan.ast.ReturnStmt;
 import lexiscan.ast.Stmt;
 import lexiscan.ast.UnaryExpr;
@@ -87,6 +88,17 @@ public class Interpreter {
             throw new ReturnSignal(value);
         }
 
+        // Print statement
+        if (statement instanceof PrintStmt printStmt) {
+            Object value = evaluate(
+                    printStmt.getExpression()
+            );
+
+            System.out.println(value);
+
+            return value;
+        }
+
         // Block statement
         if (statement instanceof BlockStmt blockStmt) {
             return executeBlock(
@@ -103,7 +115,7 @@ public class Interpreter {
             );
 
             if (!(condition instanceof Boolean booleanCondition)) {
-                throw new RuntimeException(
+                throw new LexiRuntimeException(
                         "If condition must be boolean."
                 );
             }
@@ -124,14 +136,28 @@ public class Interpreter {
 
             Object result = null;
 
-            while (isTruthy(interpret(whileStmt.getCondition()))) {
+            while (true) {
+                Object condition = evaluate(
+                        whileStmt.getCondition()
+                );
+
+                if (!(condition instanceof Boolean booleanCondition)) {
+                    throw new LexiRuntimeException(
+                            "While condition must be boolean."
+                    );
+                }
+
+                if (!booleanCondition) {
+                    break;
+                }
+
                 result = execute(whileStmt.getBody());
             }
 
             return result;
         }
 
-        throw new RuntimeException(
+        throw new LexiRuntimeException(
                 "Unknown statement."
         );
     }
@@ -149,6 +175,16 @@ public class Interpreter {
         }
 
         return result;
+    }
+
+    public Object run(String source) {
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        return execute(statements);
     }
 
     public Object executeBlock(
@@ -226,7 +262,7 @@ public class Interpreter {
             Object callee = evaluate(callExpr.getCallee());
 
             if (!(callee instanceof LexiCallable function)) {
-                throw new RuntimeException(
+                throw new LexiRuntimeException(
                         "Can only call functions."
                 );
             }
@@ -238,7 +274,7 @@ public class Interpreter {
             }
 
             if (arguments.size() != function.arity()) {
-                throw new RuntimeException(
+                throw new LexiRuntimeException(
                         "Expected " + function.arity()
                                 + " arguments but got "
                                 + arguments.size() + "."
@@ -269,7 +305,7 @@ public class Interpreter {
                     );
 
                 default:
-                    throw new RuntimeException(
+                    throw new LexiRuntimeException(
                             "Unknown unary operator: "
                                     + operator.lexeme()
                     );
@@ -310,7 +346,7 @@ public class Interpreter {
                                 + String.valueOf(right);
                     }
 
-                    throw new RuntimeException(
+                    throw new LexiRuntimeException(
                             "Operands must be numbers or strings."
                     );
 
@@ -348,7 +384,7 @@ public class Interpreter {
                             ((Number) right).doubleValue();
 
                     if (divisor == 0) {
-                        throw new RuntimeException(
+                        throw new LexiRuntimeException(
                                 "Cannot divide by zero."
                         );
                     }
@@ -436,14 +472,14 @@ public class Interpreter {
 
                 default:
 
-                    throw new RuntimeException(
+                    throw new LexiRuntimeException(
                             "Unknown binary operator: "
                                     + operator.lexeme()
                     );
             }
         }
 
-        throw new RuntimeException(
+        throw new LexiRuntimeException(
                 "Unknown expression type."
         );
     }
@@ -461,7 +497,7 @@ public class Interpreter {
         if (!(left instanceof Number) ||
                 !(right instanceof Number)) {
 
-            throw new RuntimeException(
+            throw new LexiRuntimeException(
                     "Operands must be numbers for '"
                             + operator.lexeme()
                             + "'."
@@ -498,7 +534,7 @@ public class Interpreter {
             return booleanValue;
         }
 
-        throw new RuntimeException(
+        throw new LexiRuntimeException(
                 "Operand must be boolean for '"
                         + operator.lexeme()
                         + "'."

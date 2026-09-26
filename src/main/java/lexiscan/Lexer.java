@@ -170,14 +170,15 @@ public class Lexer {
                     identifier();
 
                 } else {
-
-                    System.err.println(
+                    throw new LexiLexerException(
                             "Unexpected character '" +
                                     c +
                                     "' at line " +
                                     line +
                                     ", column " +
-                                    column
+                                    (column - 1),
+                            line,
+                            column - 1
                     );
                 }
 
@@ -246,13 +247,12 @@ public class Lexer {
         }
 
         if (isAtEnd()) {
-
-            System.err.println(
+            throw new LexiLexerException(
                     "Unterminated string at line " +
-                            line
+                            line,
+                    line,
+                    column
             );
-
-            return;
         }
 
         // Closing quote

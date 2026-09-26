@@ -5,10 +5,14 @@ import lexiscan.ast.ExprStmt;
 import lexiscan.ast.Stmt;
 import org.junit.jupiter.api.Test;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class InterpreterTest {
 
@@ -924,6 +928,51 @@ public class InterpreterTest {
     }
 
     @Test
+    void testLogicalAndWithBooleanOperands() {
+
+        String source = "true and true;";
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        ExprStmt exprStmt = (ExprStmt) statements.get(0);
+
+        Object result = interpreter.interpret(
+                exprStmt.getExpression()
+        );
+
+        assertEquals(true, result);
+    }
+
+    @Test
+    void testLogicalAndWithInvalidLeftOperandThrowsRuntimeError() {
+
+        String source = "1 and true;";
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        ExprStmt exprStmt = (ExprStmt) statements.get(0);
+
+        RuntimeException exception = assertThrows(
+                RuntimeException.class,
+                () -> interpreter.interpret(exprStmt.getExpression())
+        );
+
+        assertEquals("Operand must be boolean for 'and'.", exception.getMessage());
+    }
+
+    @Test
     void testLogicalOr() {
 
         String source = "false or true;";
@@ -943,6 +992,51 @@ public class InterpreterTest {
         );
 
         assertEquals(true, result);
+    }
+
+    @Test
+    void testLogicalOrWithBooleanOperands() {
+
+        String source = "false or false;";
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        ExprStmt exprStmt = (ExprStmt) statements.get(0);
+
+        Object result = interpreter.interpret(
+                exprStmt.getExpression()
+        );
+
+        assertEquals(false, result);
+    }
+
+    @Test
+    void testLogicalOrWithInvalidRightOperandThrowsRuntimeError() {
+
+        String source = "false or \"value\";";
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        ExprStmt exprStmt = (ExprStmt) statements.get(0);
+
+        RuntimeException exception = assertThrows(
+                RuntimeException.class,
+                () -> interpreter.interpret(exprStmt.getExpression())
+        );
+
+        assertEquals("Operand must be boolean for 'or'.", exception.getMessage());
     }
 
     @Test
@@ -1415,10 +1509,212 @@ public class InterpreterTest {
     }
 
     @Test
+    void testUndefinedVariableUsesStructuredRuntimeException() {
+
+        String source = """
+                {
+                    y;
+                }
+                """;
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        LexiRuntimeException exception = assertThrows(
+                LexiRuntimeException.class,
+                () -> interpreter.execute(statements.get(0))
+        );
+
+        assertEquals("Undefined variable 'y'.", exception.getMessage());
+    }
+
+    @Test
+    void testUndefinedAssignmentUsesStructuredRuntimeException() {
+
+        Interpreter interpreter = new Interpreter();
+
+        LexiRuntimeException exception = assertThrows(
+                LexiRuntimeException.class,
+                () -> interpreter.getEnvironment().assign("z", 1.0)
+        );
+
+        assertEquals("Undefined variable 'z'.", exception.getMessage());
+    }
+
+    @Test
     void testIfConditionMustBeBoolean() {
 
         String source = """
                 if (123) {
+                    let x = 1;
+                }
+                """;
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        RuntimeException exception = assertThrows(
+                RuntimeException.class,
+                () -> interpreter.execute(statements.get(0))
+        );
+
+        assertEquals("If condition must be boolean.", exception.getMessage());
+    }
+
+    @Test
+    void testInvalidIfConditionUsesStructuredRuntimeException() {
+
+        String source = """
+                if (1) {
+                    let x = 1;
+                }
+                """;
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        LexiRuntimeException exception = assertThrows(
+                LexiRuntimeException.class,
+                () -> interpreter.execute(statements.get(0))
+        );
+
+        assertEquals("If condition must be boolean.", exception.getMessage());
+    }
+
+    @Test
+    void testIfConditionTrueExecutesThenBranch() {
+
+        String source = """
+                let x = 0;
+                if (true) {
+                    x = 1;
+                }
+                x;
+                """;
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        for (int i = 0; i < statements.size() - 1; i++) {
+            interpreter.execute(statements.get(i));
+        }
+
+        ExprStmt exprStmt = (ExprStmt) statements.get(statements.size() - 1);
+
+        Object result = interpreter.interpret(
+                exprStmt.getExpression()
+        );
+
+        assertEquals(1.0, result);
+    }
+
+    @Test
+    void testIfConditionFalseSkipsThenBranch() {
+
+        String source = """
+                let x = 0;
+                if (false) {
+                    x = 1;
+                }
+                x;
+                """;
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        for (int i = 0; i < statements.size() - 1; i++) {
+            interpreter.execute(statements.get(i));
+        }
+
+        ExprStmt exprStmt = (ExprStmt) statements.get(statements.size() - 1);
+
+        Object result = interpreter.interpret(
+                exprStmt.getExpression()
+        );
+
+        assertEquals(0.0, result);
+    }
+
+    @Test
+    void testIfConditionNumericMustBeBoolean() {
+
+        String source = """
+                if (42) {
+                    let x = 1;
+                }
+                """;
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        RuntimeException exception = assertThrows(
+                RuntimeException.class,
+                () -> interpreter.execute(statements.get(0))
+        );
+
+        assertEquals("If condition must be boolean.", exception.getMessage());
+    }
+
+    @Test
+    void testIfConditionStringMustBeBoolean() {
+
+        String source = """
+                if (\"text\") {
+                    let x = 1;
+                }
+                """;
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        RuntimeException exception = assertThrows(
+                RuntimeException.class,
+                () -> interpreter.execute(statements.get(0))
+        );
+
+        assertEquals("If condition must be boolean.", exception.getMessage());
+    }
+
+    @Test
+    void testIfConditionNullMustBeBoolean() {
+
+        String source = """
+                if (null) {
                     let x = 1;
                 }
                 """;
@@ -1510,6 +1806,72 @@ public class InterpreterTest {
     }
 
     @Test
+    void testWhileConditionTrueThenFalseTerminates() {
+
+        String source = """
+                let keepRunning = true;
+                let x = 0;
+                while (keepRunning) {
+                    x = x + 1;
+                    keepRunning = false;
+                }
+                x;
+                """;
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        for (int i = 0; i < statements.size() - 1; i++) {
+            interpreter.execute(statements.get(i));
+        }
+
+        ExprStmt exprStmt = (ExprStmt) statements.get(statements.size() - 1);
+
+        Object result = interpreter.interpret(
+                exprStmt.getExpression()
+        );
+
+        assertEquals(1.0, result);
+    }
+
+    @Test
+    void testWhileConditionFalseDoesNotExecuteBody() {
+
+        String source = """
+                let x = 0;
+                while (false) {
+                    x = 1;
+                }
+                x;
+                """;
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        for (int i = 0; i < statements.size() - 1; i++) {
+            interpreter.execute(statements.get(i));
+        }
+
+        ExprStmt exprStmt = (ExprStmt) statements.get(statements.size() - 1);
+
+        Object result = interpreter.interpret(
+                exprStmt.getExpression()
+        );
+
+        assertEquals(0.0, result);
+    }
+
+    @Test
     void testWhileLoopZeroExecutions() {
 
         String source = """
@@ -1539,6 +1901,166 @@ public class InterpreterTest {
         );
 
         assertEquals(10.0, result);
+    }
+
+    @Test
+    void testWhileConditionNumericMustBeBoolean() {
+
+        String source = """
+                while (1) {
+                    let x = 1;
+                }
+                """;
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        RuntimeException exception = assertThrows(
+                RuntimeException.class,
+                () -> interpreter.execute(statements.get(0))
+        );
+
+        assertEquals("While condition must be boolean.", exception.getMessage());
+    }
+
+    @Test
+    void testInvalidWhileConditionUsesStructuredRuntimeException() {
+
+        String source = """
+                while (1) {
+                    let x = 1;
+                }
+                """;
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        LexiRuntimeException exception = assertThrows(
+                LexiRuntimeException.class,
+                () -> interpreter.execute(statements.get(0))
+        );
+
+        assertEquals("While condition must be boolean.", exception.getMessage());
+    }
+
+    @Test
+    void testMalformedExpressionUsesStructuredParserException() {
+
+        String source = "let x = ;";
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+
+        LexiParserException exception = assertThrows(
+                LexiParserException.class,
+                parser::parse
+        );
+
+        assertTrue(exception.getMessage().contains("Expected expression."));
+        assertEquals(1, exception.getLine());
+        assertEquals(9, exception.getColumn());
+        assertEquals(TokenType.SEMICOLON, exception.getToken().type());
+    }
+
+    @Test
+    void testUnterminatedStringUsesStructuredLexerException() {
+
+        String source = "print \"hello";
+
+        Lexer lexer = new Lexer(source);
+
+        LexiLexerException exception = assertThrows(
+                LexiLexerException.class,
+                lexer::scanTokens
+        );
+
+        assertTrue(exception.getMessage().contains("Unterminated string"));
+        assertEquals(1, exception.getLine());
+        assertTrue(exception.getColumn() >= 1);
+    }
+
+    @Test
+    void testParserErrorPreservesLocationInformation() {
+
+        String source = """
+                let a = 1;
+                (
+                """;
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+
+        LexiParserException exception = assertThrows(
+                LexiParserException.class,
+                parser::parse
+        );
+
+        assertEquals(3, exception.getLine());
+        assertEquals(1, exception.getColumn());
+    }
+
+    @Test
+    void testWhileConditionStringMustBeBoolean() {
+
+        String source = """
+                while (\"loop\") {
+                    let x = 1;
+                }
+                """;
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        RuntimeException exception = assertThrows(
+                RuntimeException.class,
+                () -> interpreter.execute(statements.get(0))
+        );
+
+        assertEquals("While condition must be boolean.", exception.getMessage());
+    }
+
+    @Test
+    void testWhileConditionNullMustBeBoolean() {
+
+        String source = """
+                while (null) {
+                    let x = 1;
+                }
+                """;
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        RuntimeException exception = assertThrows(
+                RuntimeException.class,
+                () -> interpreter.execute(statements.get(0))
+        );
+
+        assertEquals("While condition must be boolean.", exception.getMessage());
     }
 
     @Test
@@ -1669,6 +2191,210 @@ public class InterpreterTest {
         );
 
         assertEquals(6.0, result);
+    }
+
+    @Test
+    void testPrintString() {
+
+        String source = "print \"Hello\";";
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        PrintStream originalOut = System.out;
+
+        try {
+            System.setOut(new PrintStream(output, true, StandardCharsets.UTF_8));
+
+            interpreter.execute(statements.get(0));
+        } finally {
+            System.setOut(originalOut);
+        }
+
+        assertEquals("Hello" + System.lineSeparator(), output.toString(StandardCharsets.UTF_8));
+    }
+
+    @Test
+    void testPrintNumber() {
+
+        String source = "print 42;";
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        PrintStream originalOut = System.out;
+
+        try {
+            System.setOut(new PrintStream(output, true, StandardCharsets.UTF_8));
+
+            interpreter.execute(statements.get(0));
+        } finally {
+            System.setOut(originalOut);
+        }
+
+        assertEquals("42.0" + System.lineSeparator(), output.toString(StandardCharsets.UTF_8));
+    }
+
+    @Test
+    void testPrintVariable() {
+
+        String source = """
+                let x = 20;
+                print x;
+                """;
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        PrintStream originalOut = System.out;
+
+        try {
+            System.setOut(new PrintStream(output, true, StandardCharsets.UTF_8));
+
+            interpreter.execute(statements.get(0));
+            interpreter.execute(statements.get(1));
+        } finally {
+            System.setOut(originalOut);
+        }
+
+        assertEquals("20.0" + System.lineSeparator(), output.toString(StandardCharsets.UTF_8));
+    }
+
+    @Test
+    void testPrintArithmeticExpression() {
+
+        String source = "print 10 + 5;";
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        PrintStream originalOut = System.out;
+
+        try {
+            System.setOut(new PrintStream(output, true, StandardCharsets.UTF_8));
+
+            interpreter.execute(statements.get(0));
+        } finally {
+            System.setOut(originalOut);
+        }
+
+        assertEquals("15.0" + System.lineSeparator(), output.toString(StandardCharsets.UTF_8));
+    }
+
+    @Test
+    void testPrintBoolean() {
+
+        String source = "print true;";
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        PrintStream originalOut = System.out;
+
+        try {
+            System.setOut(new PrintStream(output, true, StandardCharsets.UTF_8));
+
+            interpreter.execute(statements.get(0));
+        } finally {
+            System.setOut(originalOut);
+        }
+
+        assertEquals("true" + System.lineSeparator(), output.toString(StandardCharsets.UTF_8));
+    }
+
+    @Test
+    void testPrintNull() {
+
+        String source = "print null;";
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        PrintStream originalOut = System.out;
+
+        try {
+            System.setOut(new PrintStream(output, true, StandardCharsets.UTF_8));
+
+            interpreter.execute(statements.get(0));
+        } finally {
+            System.setOut(originalOut);
+        }
+
+        assertEquals("null" + System.lineSeparator(), output.toString(StandardCharsets.UTF_8));
+    }
+
+    @Test
+    void testMultiplePrintStatements() {
+
+        String source = """
+                print "Hello";
+                print 10 + 5;
+                let x = 20;
+                print x;
+                """;
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.scanTokens();
+
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        Interpreter interpreter = new Interpreter();
+
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        PrintStream originalOut = System.out;
+
+        try {
+            System.setOut(new PrintStream(output, true, StandardCharsets.UTF_8));
+
+            for (Stmt statement : statements) {
+                interpreter.execute(statement);
+            }
+        } finally {
+            System.setOut(originalOut);
+        }
+
+        String expected = "Hello" + System.lineSeparator()
+                + "15.0" + System.lineSeparator()
+                + "20.0" + System.lineSeparator();
+
+        assertEquals(expected, output.toString(StandardCharsets.UTF_8));
     }
 
     @Test
@@ -1824,5 +2550,220 @@ public class InterpreterTest {
         );
 
         assertEquals(120.0, result);
+    }
+
+    @Test
+    void testRunProgramVariableDeclarationAndExpression() {
+        Interpreter interpreter = new Interpreter();
+
+        Object result = interpreter.run("""
+                let x = 10;
+                let y = 5;
+                x + y;
+                """);
+
+        assertEquals(15.0, result);
+    }
+
+    @Test
+    void testRunProgramVariableReassignment() {
+        Interpreter interpreter = new Interpreter();
+
+        Object result = interpreter.run("""
+                let x = 10;
+                x = 20;
+                x;
+                """);
+
+        assertEquals(20.0, result);
+    }
+
+    @Test
+    void testRunProgramArithmeticAndPrecedence() {
+        Interpreter interpreter = new Interpreter();
+
+        Object result = interpreter.run("2 + 3 * 4;");
+
+        assertEquals(14.0, result);
+    }
+
+    @Test
+    void testRunProgramComparisonsAndEquality() {
+        Interpreter interpreter = new Interpreter();
+
+        Object result = interpreter.run("(10 > 5) == (3 < 1);");
+
+        assertEquals(false, result);
+    }
+
+    @Test
+    void testRunProgramBooleanExpression() {
+        Interpreter interpreter = new Interpreter();
+
+        Object result = interpreter.run("true and !false;");
+
+        assertEquals(true, result);
+    }
+
+    @Test
+    void testRunProgramIfElse() {
+        Interpreter interpreter = new Interpreter();
+
+        Object result = interpreter.run("""
+                let x = 0;
+                if (true) {
+                    x = 1;
+                } else {
+                    x = 2;
+                }
+                x;
+                """);
+
+        assertEquals(1.0, result);
+    }
+
+    @Test
+    void testRunProgramWhileLoop() {
+        Interpreter interpreter = new Interpreter();
+
+        Object result = interpreter.run("""
+                let x = 0;
+                while (x < 3) {
+                    x = x + 1;
+                }
+                x;
+                """);
+
+        assertEquals(3.0, result);
+    }
+
+    @Test
+    void testRunProgramNestedBlocksAndScopes() {
+        Interpreter interpreter = new Interpreter();
+
+        Object result = interpreter.run("""
+                let x = 1;
+                {
+                    let x = 2;
+                }
+                x;
+                """);
+
+        assertEquals(1.0, result);
+    }
+
+    @Test
+    void testRunProgramFunctionAndParametersAndReturn() {
+        Interpreter interpreter = new Interpreter();
+
+        Object result = interpreter.run("""
+                fun sum(a, b, c) {
+                    return a + b + c;
+                }
+                sum(2, 3, 4);
+                """);
+
+        assertEquals(9.0, result);
+    }
+
+    @Test
+    void testRunProgramRecursion() {
+        Interpreter interpreter = new Interpreter();
+
+        Object result = interpreter.run("""
+                fun factorial(n) {
+                    if (n < 2) {
+                        return 1;
+                    }
+
+                    return n * factorial(n - 1);
+                }
+                factorial(5);
+                """);
+
+        assertEquals(120.0, result);
+    }
+
+    @Test
+    void testRunProgramClosure() {
+        Interpreter interpreter = new Interpreter();
+
+        Object result = interpreter.run("""
+                let x = 100;
+                fun readX() {
+                    return x;
+                }
+                {
+                    let x = 1;
+                    readX();
+                }
+                """);
+
+        assertEquals(100.0, result);
+    }
+
+    @Test
+    void testRunProgramPrint() {
+        Interpreter interpreter = new Interpreter();
+
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        PrintStream originalOut = System.out;
+
+        try {
+            System.setOut(new PrintStream(output, true, StandardCharsets.UTF_8));
+
+            Object result = interpreter.run("""
+                    print "Hello";
+                    print 10 + 5;
+                    let x = 20;
+                    print x;
+                    """);
+
+            assertEquals(20.0, result);
+        } finally {
+            System.setOut(originalOut);
+        }
+
+        String expected = "Hello" + System.lineSeparator()
+                + "15.0" + System.lineSeparator()
+                + "20.0" + System.lineSeparator();
+
+        assertEquals(expected, output.toString(StandardCharsets.UTF_8));
+    }
+
+    @Test
+    void testRunProgramRuntimeErrorPropagates() {
+        Interpreter interpreter = new Interpreter();
+
+        LexiRuntimeException exception = assertThrows(
+                LexiRuntimeException.class,
+                () -> interpreter.run("y;")
+        );
+
+        assertEquals("Undefined variable 'y'.", exception.getMessage());
+    }
+
+    @Test
+    void testRunProgramParserErrorPropagates() {
+        Interpreter interpreter = new Interpreter();
+
+        LexiParserException exception = assertThrows(
+                LexiParserException.class,
+                () -> interpreter.run("let x = ;")
+        );
+
+        assertTrue(exception.getMessage().contains("Expected expression."));
+    }
+
+    @Test
+    void testRunProgramLexerErrorPropagates() {
+        Interpreter interpreter = new Interpreter();
+
+        LexiLexerException exception = assertThrows(
+                LexiLexerException.class,
+                () -> interpreter.run("print \"oops")
+        );
+
+        assertTrue(exception.getMessage().contains("Unterminated string"));
     }
 }

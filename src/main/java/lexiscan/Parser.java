@@ -9,6 +9,7 @@ import lexiscan.ast.ExprStmt;
 import lexiscan.ast.FunctionStmt;
 import lexiscan.ast.IfStmt;
 import lexiscan.ast.LiteralExpr;
+import lexiscan.ast.PrintStmt;
 import lexiscan.ast.ReturnStmt;
 import lexiscan.ast.Stmt;
 import lexiscan.ast.UnaryExpr;
@@ -59,6 +60,10 @@ public class Parser {
 
     private Stmt statement() {
 
+        if (match(TokenType.PRINT)) {
+            return printStatement();
+        }
+
         if (match(TokenType.RETURN)) {
             return returnStatement();
         }
@@ -76,6 +81,17 @@ public class Parser {
         }
 
         return expressionStatement();
+    }
+
+    private Stmt printStatement() {
+        Expr value = expression();
+
+        consume(
+                TokenType.SEMICOLON,
+                "Expected ';' after print value."
+        );
+
+        return new PrintStmt(value);
     }
 
     private Stmt functionDeclaration() {
@@ -538,6 +554,13 @@ public class Parser {
             );
         }
 
+        if (match(TokenType.STRING)) {
+
+            return new LiteralExpr(
+                    previous().literal()
+            );
+        }
+
         if (match(TokenType.IDENTIFIER)) {
 
             return new VariableExpr(
@@ -627,16 +650,17 @@ public class Parser {
         return tokens.get(current - 1);
     }
 
-    private RuntimeException error(
+    private LexiParserException error(
             Token token,
             String message
     ) {
 
-        return new RuntimeException(
+        return new LexiParserException(
                 message
                         + " Found '"
                         + token.lexeme()
-                        + "'."
+                        + "'.",
+                token
         );
     }
 }
