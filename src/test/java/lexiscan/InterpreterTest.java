@@ -2553,6 +2553,47 @@ public class InterpreterTest {
     }
 
     @Test
+    void testCallingNonCallableThrowsRuntimeException() {
+        Interpreter interpreter = new Interpreter();
+
+        LexiRuntimeException exception = assertThrows(
+                LexiRuntimeException.class,
+                () -> interpreter.run("1(2);")
+        );
+
+        assertEquals("Can only call functions.", exception.getMessage());
+    }
+
+    @Test
+    void testFunctionArityMismatchThrowsRuntimeException() {
+        Interpreter interpreter = new Interpreter();
+
+        LexiRuntimeException exception = assertThrows(
+                LexiRuntimeException.class,
+                () -> interpreter.run("""
+                        fun add(a, b) {
+                            return a + b;
+                        }
+                        add(1);
+                        """)
+        );
+
+        assertEquals("Expected 2 arguments but got 1.", exception.getMessage());
+    }
+
+    @Test
+    void testReturnOutsideFunctionThrowsReturnSignal() {
+        Interpreter interpreter = new Interpreter();
+
+        ReturnSignal signal = assertThrows(
+                ReturnSignal.class,
+                () -> interpreter.run("return 1;")
+        );
+
+        assertEquals(1.0, signal.getValue());
+    }
+
+    @Test
     void testRunProgramVariableDeclarationAndExpression() {
         Interpreter interpreter = new Interpreter();
 
