@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class LexerTest {
 
@@ -76,5 +78,35 @@ public class LexerTest {
                 TokenType.EOF,
                 tokens.get(5).getType()
         );
+    }
+
+    @Test
+    void testUnexpectedCharacterThrowsLexiLexerException() {
+
+        Lexer lexer = new Lexer("let x = @;");
+
+        LexiLexerException exception = assertThrows(
+                LexiLexerException.class,
+                lexer::scanTokens
+        );
+
+        assertTrue(exception.getMessage().contains("Unexpected character '@'"));
+        assertEquals(1, exception.getLine());
+        assertEquals(9, exception.getColumn());
+    }
+
+    @Test
+    void testUnterminatedStringThrowsLexiLexerException() {
+
+        Lexer lexer = new Lexer("\"hello");
+
+        LexiLexerException exception = assertThrows(
+                LexiLexerException.class,
+                lexer::scanTokens
+        );
+
+        assertTrue(exception.getMessage().contains("Unterminated string"));
+        assertEquals(1, exception.getLine());
+        assertTrue(exception.getColumn() >= 1);
     }
 }
